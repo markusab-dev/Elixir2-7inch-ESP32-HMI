@@ -624,7 +624,7 @@ void ElixirUI::buildPowerPage() {
     power_alt_temp_val_ = createValue(alt_box, 6, 24, &lv_font_montserrat_24, theme::mint());
     createUnit(alt_box, "°C", 90, 30);
     power_alt_status_val_ = lv_label_create(alt_box);
-    lv_label_set_text(power_alt_status_val_, "CHARGING ≈ 34.5 A • Headroom Nominal (<80°C)");
+    lv_label_set_text(power_alt_status_val_, "CHARGING ~ 34.5 A • Headroom Nominal (<80°C)");
     lv_obj_set_pos(power_alt_status_val_, 6, 60);
     lv_obj_set_style_text_font(power_alt_status_val_, &lv_font_montserrat_12, 0);
     lv_obj_set_style_text_color(power_alt_status_val_, theme::mint(), 0);
@@ -1077,7 +1077,7 @@ void ElixirUI::update(const BoatState& state, const HistoryBuffer& history,
 
     lv_label_set_text_fmt(ov_solar_val_, "%.0f", state.solar_power_w);
     if (state.engine_running && state.generator_current_a > 0.5F) {
-        lv_label_set_text_fmt(ov_alt_charge_val_, "≈ %.1f A", state.generator_current_a);
+        lv_label_set_text_fmt(ov_alt_charge_val_, "~ %.1f A", state.generator_current_a);
         lv_obj_set_style_text_color(ov_alt_charge_val_, theme::mint(), 0);
     } else {
         lv_label_set_text(ov_alt_charge_val_, "STANDBY");
@@ -1132,13 +1132,13 @@ void ElixirUI::update(const BoatState& state, const HistoryBuffer& history,
 
     if (state.engine_running && state.generator_current_a > 0.5F) {
         if (state.alternator_temp_c >= 100.0F) {
-            lv_label_set_text_fmt(power_alt_status_val_, "ALERT: ALT OVERHEAT >100°C • Charging ≈ %.1f A", state.generator_current_a);
+            lv_label_set_text_fmt(power_alt_status_val_, "ALERT: ALT OVERHEAT >100°C • Charging ~ %.1f A", state.generator_current_a);
             lv_obj_set_style_text_color(power_alt_status_val_, theme::coral(), 0);
         } else if (state.alternator_temp_c >= 80.0F) {
-            lv_label_set_text_fmt(power_alt_status_val_, "WARN: ALT HIGH TEMP >80°C • Charging ≈ %.1f A", state.generator_current_a);
+            lv_label_set_text_fmt(power_alt_status_val_, "WARN: ALT HIGH TEMP >80°C • Charging ~ %.1f A", state.generator_current_a);
             lv_obj_set_style_text_color(power_alt_status_val_, theme::amber(), 0);
         } else {
-            lv_label_set_text_fmt(power_alt_status_val_, "CHARGING ≈ %.1f A (%.0f W) • Headroom Nominal (<80°C)",
+            lv_label_set_text_fmt(power_alt_status_val_, "CHARGING ~ %.1f A (%.0f W) • Headroom Nominal (<80°C)",
                                   state.generator_current_a, state.generator_current_a * state.battery_voltage_v);
             lv_obj_set_style_text_color(power_alt_status_val_, theme::mint(), 0);
         }
@@ -1162,7 +1162,7 @@ void ElixirUI::update(const BoatState& state, const HistoryBuffer& history,
 
     lv_label_set_text_fmt(eng_room_val_, "%.1f", state.engine_room_temp_c);
     if (state.engine_running) {
-        lv_label_set_text_fmt(eng_charge_val_, "≈ %.1f A (%.0f W)", state.generator_current_a,
+        lv_label_set_text_fmt(eng_charge_val_, "~ %.1f A (%.0f W)", state.generator_current_a,
                               state.generator_current_a * state.battery_voltage_v);
         lv_label_set_text(eng_state_badge_, "STATE: YANMAR RUNNING • GENERATOR ACTIVE");
         lv_obj_set_style_text_color(eng_state_badge_, theme::mint(), 0);

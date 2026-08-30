@@ -216,7 +216,7 @@ def render_overview() -> None:
 
     c.inset_box(278, 292, 244, 96)
     c.caption("GENERATOR RESIDUAL CHARGE", 288, 300)
-    c.text("≈ 34.5 A", 288, 316, size=22, color="mint", bold=True)
+    c.text("~ 34.5 A", 288, 316, size=22, color="mint", bold=True)
     c.text("Charging house bank (480 W)", 288, 350, size=12, color="muted")
 
     # Right: Machinery & Climate
@@ -335,7 +335,7 @@ def render_power() -> None:
     c.caption("ALTERNATOR TEMPERATURE & CHARGE", 422, 150)
     c.text("65.4", 422, 168, size=24, color="mint", bold=True)
     c.text("°C", 500, 174, size=14, color="muted")
-    c.text("CHARGING ≈ 34.5 A • Headroom Nominal (<80°C)", 422, 204, size=12, color="mint")
+    c.text("CHARGING ~ 34.5 A • Headroom Nominal (<80°C)", 422, 204, size=12, color="mint")
 
     # Voltage Chart
     c.inset_box(412, 240, 364, 148)
@@ -380,7 +380,7 @@ def render_engine() -> None:
     c.caption("GENERATOR CHARGE OUTPUT & MOTORING NAV", 414, 62)
     c.inset_box(412, 80, 364, 96)
     c.caption("ALTERNATOR CHARGE OUTPUT", 422, 88)
-    c.text("≈ 34.5 A (480 W)", 422, 106, size=28, color="mint", bold=True)
+    c.text("~ 34.5 A (480 W)", 422, 106, size=28, color="mint", bold=True)
     c.text("Residual estimate: battery.current - solar.current", 422, 146, size=11, color="muted")
 
     c.inset_box(412, 184, 364, 80)
