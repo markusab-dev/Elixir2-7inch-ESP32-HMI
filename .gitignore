@@ -1,0 +1,21 @@
+# PlatformIO & Build output
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# macOS / OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
