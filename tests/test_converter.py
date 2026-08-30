@@ -76,7 +76,7 @@ def main() -> int:
         records = re.findall(r"^    \{[-0-9, ]+\},$", text, re.MULTILINE)
         assert len(records) >= 3, records
         first_values = [int(value.strip()) for value in records[0].strip(" {},").split(",")]
-        assert len(first_values) == 13
+        assert len(first_values) == 20
         assert first_values[0] == 0
         assert first_values[1] == 593000000
         assert first_values[2] == 182000000

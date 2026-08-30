@@ -8,7 +8,7 @@
 #include "model/HistoryBuffer.h"
 
 int main() {
-    static_assert(sizeof(elixir::ReplayRecordPacked) == 32);
+    static_assert(sizeof(elixir::ReplayRecordPacked) == 46);
 
     elixir::DataEngine engine;
     engine.begin(1000U);

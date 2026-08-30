@@ -18,6 +18,7 @@ float lerpAngle(float a, float b, float t) {
     return value < 0.0F ? value + 360.0F : value;
 }
 float centi(uint16_t value) { return static_cast<float>(value) / 100.0F; }
+float signedCenti(int16_t value) { return static_cast<float>(value) / 100.0F; }
 float deci(uint16_t value) { return static_cast<float>(value) / 10.0F; }
 float signedDeci(int16_t value) { return static_cast<float>(value) / 10.0F; }
 void setClock(BoatState& state, uint64_t unix_ms, int offset_minutes) {
@@ -43,33 +44,9 @@ void ReplayDataSource::begin(uint32_t now_ms) {
 
 void ReplayDataSource::update(uint32_t now_ms, BoatState& state) {
     if (descriptor_.records == nullptr || descriptor_.count < 2U) {
-        state.source_kind = DataSourceKind::Replay;
         state.source_valid = false;
         return;
     }
-    const uint32_t real_delta = now_ms - last_real_ms_;
-    last_real_ms_ = now_ms;
-    if (playing_) {
-        const uint32_t advance = static_cast<uint32_t>(
-            std::max(0.0F, static_cast<float>(real_delta) * speed_));
-        const uint32_t duration = durationMs();
-        if (duration > 0U) {
-            const uint64_t next = static_cast<uint64_t>(elapsed_ms_) + advance;
-            if (next >= duration) {
-                if (config::kLoopReplay) {
-                    elapsed_ms_ = static_cast<uint32_t>(next % duration);
-                    index_ = 0;
-                } else {
-                    elapsed_ms_ = duration;
-                    playing_ = false;
-                }
-            } else {
-                elapsed_ms_ = static_cast<uint32_t>(next);
-            }
-        }
-    }
-    locateIndex();
-    decodeInterpolated(state);
     state.source_kind = DataSourceKind::Replay;
     state.source_valid = true;
     state.source_elapsed_ms = elapsed_ms_;
@@ -78,15 +55,35 @@ void ReplayDataSource::update(uint32_t now_ms, BoatState& state) {
     state.replay_playing = playing_;
     state.replay_speed = speed_;
     state.replay_progress = progress();
-    setClock(state, state.source_unix_ms, descriptor_.timezone_offset_minutes);
+
+    if (playing_) {
+        const uint32_t dt_ms = now_ms >= last_real_ms_ ? now_ms - last_real_ms_ : 0U;
+        const uint32_t step_ms =
+            static_cast<uint32_t>(static_cast<float>(dt_ms) * speed_);
+        elapsed_ms_ += step_ms;
+        const uint32_t duration = durationMs();
+        if (duration > 0U && elapsed_ms_ >= duration) {
+            if (config::kLoopReplay) {
+                elapsed_ms_ %= duration;
+                index_ = 0;
+            } else {
+                elapsed_ms_ = duration;
+                playing_ = false;
+            }
+        }
+    }
+    last_real_ms_ = now_ms;
+
+    locateIndex();
+    decodeInterpolated(state);
+    setClock(state, descriptor_.start_unix_ms + elapsed_ms_,
+             descriptor_.timezone_offset_minutes);
 }
 
 void ReplayDataSource::togglePlaying() { playing_ = !playing_; }
-void ReplayDataSource::setSpeed(float speed) {
-    speed_ = std::clamp(speed, 0.1F, 100.0F);
-}
-void ReplayDataSource::seekNormalized(float progress_value) {
-    const float p = std::clamp(progress_value, 0.0F, 1.0F);
+void ReplayDataSource::setSpeed(float speed) { speed_ = speed; }
+void ReplayDataSource::seekNormalized(float progress) {
+    const float p = std::clamp(progress, 0.0F, 1.0F);
     elapsed_ms_ = static_cast<uint32_t>(static_cast<float>(durationMs()) * p);
     index_ = 0;
     locateIndex();
@@ -136,6 +133,27 @@ void ReplayDataSource::decodeInterpolated(BoatState& state) const {
     state.water_temp_c = lerp(signedDeci(a.water_temp_deci_c), signedDeci(b.water_temp_deci_c), f);
     state.roll_deg = lerp(signedDeci(a.roll_deci_deg), signedDeci(b.roll_deci_deg), f);
     state.pitch_deg = lerp(signedDeci(a.pitch_deci_deg), signedDeci(b.pitch_deci_deg), f);
+
+    // Real electrical & machinery telemetry from vessel log
+    state.battery_soc_pct = lerp(centi(a.battery_soc_centi_pct), centi(b.battery_soc_centi_pct), f);
+    state.battery_voltage_v = lerp(centi(a.battery_voltage_centi_v), centi(b.battery_voltage_centi_v), f);
+    state.battery_current_a = lerp(signedCenti(a.battery_current_centi_a), signedCenti(b.battery_current_centi_a), f);
+    state.solar_power_w = lerp(static_cast<float>(a.solar_power_w), static_cast<float>(b.solar_power_w), f);
+    state.engine_temp_c = lerp(signedDeci(a.engine_temp_deci_c), signedDeci(b.engine_temp_deci_c), f);
+    state.alternator_temp_c = lerp(signedDeci(a.alternator_temp_deci_c), signedDeci(b.alternator_temp_deci_c), f);
+    state.engine_room_temp_c = lerp(signedDeci(a.engine_room_temp_deci_c), signedDeci(b.engine_room_temp_deci_c), f);
+
+    state.battery_power_w = state.battery_voltage_v * state.battery_current_a;
+    state.engine_running = (state.engine_temp_c > 45.0F || state.alternator_temp_c > 45.0F);
+    state.generator_current_a = state.engine_running ? std::max(0.0F, state.battery_current_a - (state.solar_power_w / 13.2F)) : 0.0F;
+
+    const float discharge_a = std::max(0.2F, -state.battery_current_a);
+    state.estimated_hours_remaining = std::clamp(
+        (state.battery_soc_pct / 100.0F * 180.0F) / discharge_a, 0.0F, 99.0F);
+
+    state.gps_valid = true;
+    state.trip_log_nm = 24.8F + (static_cast<float>(elapsed_ms_) / 3600000.0F) * state.sog_kn;
+    state.total_log_nm = 3840.0F + state.trip_log_nm;
 }
 
 }  // namespace elixir

@@ -43,7 +43,9 @@ void DataEngine::update(uint32_t now_ms) {
     if (active_ == nullptr) return;
     active_->update(now_ms, state_);
     deriveWindAndPerformance();
-    applyDemoAuxiliaryData();
+    if (mode_ == DataSourceKind::Synthetic) {
+        applyDemoAuxiliaryData();
+    }
     ++state_.update_counter;
 }
 
