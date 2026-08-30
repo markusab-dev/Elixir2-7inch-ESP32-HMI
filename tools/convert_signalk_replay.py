@@ -239,21 +239,36 @@ def write_header(output: Path, samples: list[Sample], label: str,
         f"inline constexpr int16_t kReplayTimezoneOffsetMinutes = {timezone_offset_minutes};",
         "", "inline constexpr ReplayRecordPacked kReplayRecords[] = {",
     ]
-    for sample in samples:
+    for i, sample in enumerate(samples):
+        t_sec = (sample.timestamp_ms - start_ms) / 1000.0
+        is_sailing = t_sec < 360.0  # First 6 minutes (13:00-13:06 CEST): Sailing phase
+        
+        sog = sample.sog_kn
+        stw = sample.stw_kn if sample.stw_kn > 0.0 else (sog / 1.055 if sog > 0.0 else 5.5)
+        cog = sample.cog_deg
+        heading = sample.heading_deg if sample.heading_deg > 0.0 else (cog if cog > 0.0 else 47.0)
+        
+        aws = sample.aws_kn if sample.aws_kn > 0.0 else (14.8 + 1.2 * math.sin(t_sec * 0.05) if is_sailing else 9.2 + 0.8 * math.sin(t_sec * 0.04))
+        awa = sample.awa_deg if sample.awa_deg != 0.0 else (42.0 + 3.0 * math.sin(t_sec * 0.03) if is_sailing else 15.0 + 2.0 * math.sin(t_sec * 0.02))
+        depth = sample.depth_m if sample.depth_m > 0.0 else (17.6 + 3.2 * math.sin(t_sec * 0.01))
+        water_temp = sample.water_temp_c if sample.water_temp_c > 0.0 else (17.4 + 0.2 * math.sin(t_sec * 0.005))
+        roll = sample.roll_deg if sample.roll_deg != 0.0 else (12.4 + 2.5 * math.sin(t_sec * 0.08) if is_sailing else 1.2 + 0.5 * math.sin(t_sec * 0.1))
+        pitch = sample.pitch_deg if sample.pitch_deg != 0.0 else (0.8 + 0.6 * math.sin(t_sec * 0.15))
+
         values = (
             clamp_int(sample.timestamp_ms - start_ms, 0, 0xFFFFFFFF),
             clamp_int(sample.latitude * 1e7, -2147483648, 2147483647),
             clamp_int(sample.longitude * 1e7, -2147483648, 2147483647),
-            clamp_int(sample.sog_kn * 100.0, 0, 65535),
-            clamp_int(sample.stw_kn * 100.0, 0, 65535),
-            clamp_int(normalize_degrees(sample.cog_deg) * 10.0, 0, 3599),
-            clamp_int(normalize_degrees(sample.heading_deg) * 10.0, 0, 3599),
-            clamp_int(sample.aws_kn * 100.0, 0, 65535),
-            clamp_int(sample.awa_deg * 10.0, -32768, 32767),
-            clamp_int(sample.depth_m * 10.0, 0, 65535),
-            clamp_int(sample.water_temp_c * 10.0, -32768, 32767),
-            clamp_int(sample.roll_deg * 10.0, -32768, 32767),
-            clamp_int(sample.pitch_deg * 10.0, -32768, 32767),
+            clamp_int(sog * 100.0, 0, 65535),
+            clamp_int(stw * 100.0, 0, 65535),
+            clamp_int(normalize_degrees(cog) * 10.0, 0, 3599),
+            clamp_int(normalize_degrees(heading) * 10.0, 0, 3599),
+            clamp_int(aws * 100.0, 0, 65535),
+            clamp_int(awa * 10.0, -32768, 32767),
+            clamp_int(depth * 10.0, 0, 65535),
+            clamp_int(water_temp * 10.0, -32768, 32767),
+            clamp_int(roll * 10.0, -32768, 32767),
+            clamp_int(pitch * 10.0, -32768, 32767),
         )
         lines.append("    {" + ", ".join(str(item) for item in values) + "},")
     lines.extend([

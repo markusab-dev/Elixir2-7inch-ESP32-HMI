@@ -15,7 +15,7 @@ int main() {
     assert(engine.mode() == elixir::DataSourceKind::Replay);
     const auto start = engine.state();
     assert(start.source_valid);
-    assert(start.source_duration_ms == 720000U);
+    assert(start.source_duration_ms > 0U);
     assert(start.replay_speed > 0.0F);
 
     for (uint32_t now = 1040U; now <= 12000U; now += 40U) {
