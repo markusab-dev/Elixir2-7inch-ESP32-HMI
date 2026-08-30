@@ -447,9 +447,9 @@ void ElixirUI::buildOverviewPage() {
     lv_obj_set_pos(clim_box, 0, 228);
     lv_obj_set_size(clim_box, 220, 100);
     theme::styleInset(clim_box, 14);
-    createCaption(clim_box, "CLIMATE & TRIP LOG", 6, 6);
+    createCaption(clim_box, "ENVIRONMENT & TRIP LOG", 6, 6);
     ov_climate_val_ = lv_label_create(clim_box);
-    lv_label_set_text(ov_climate_val_, "Cabin 20.5°C • Fridge 4.2°C\nWater 17.4°C • Trip 24.8 NM");
+    lv_label_set_text(ov_climate_val_, "Water 18.4°C • EngRoom 46.6°C\nTrip 24.8 NM • Total 3840 NM");
     lv_obj_set_pos(ov_climate_val_, 6, 26);
     lv_obj_set_style_text_font(ov_climate_val_, &lv_font_montserrat_12, 0);
     lv_obj_set_style_text_color(ov_climate_val_, theme::iceBlue(), 0);
@@ -1117,7 +1117,7 @@ void ElixirUI::update(const BoatState& state, const HistoryBuffer& history,
     // -------------------------------------------------------------------------
     // Page 2: Power Updates
     // -------------------------------------------------------------------------
-    lv_arc_set_value(power_soc_arc_, static_cast<int>(std::lround(state.battery_soc_pct)));
+    lv_arc_set_value(power_soc_arc_, static_cast<int16_t>(std::lround(state.battery_soc_pct)));
     lv_label_set_text_fmt(power_soc_val_, "%.0f%%", state.battery_soc_pct);
     lv_label_set_text_fmt(power_voltage_val_, "%.2f V", state.battery_voltage_v);
     lv_label_set_text_fmt(power_current_val_, "%+.1f A", state.battery_current_a);
@@ -1125,7 +1125,7 @@ void ElixirUI::update(const BoatState& state, const HistoryBuffer& history,
     lv_label_set_text_fmt(power_remaining_val_, "%.1f Hours", state.estimated_hours_remaining);
 
     lv_label_set_text_fmt(power_solar_val_, "%.0f", state.solar_power_w);
-    lv_label_set_text_fmt(power_solar_today_val_, "%.0f Wh", state.solar_today_wh);
+    lv_label_set_text_fmt(power_solar_today_val_, "%.0f Wh produced today", state.solar_today_wh);
 
     lv_label_set_text_fmt(power_alt_temp_val_, "%.1f", state.alternator_temp_c);
     lv_obj_set_style_text_color(power_alt_temp_val_, altColor(state.alternator_temp_c), 0);
@@ -1143,7 +1143,7 @@ void ElixirUI::update(const BoatState& state, const HistoryBuffer& history,
             lv_obj_set_style_text_color(power_alt_status_val_, theme::mint(), 0);
         }
     } else {
-        lv_label_set_text(power_alt_status_val_, "STANDBY • Engine Off • Solar only");
+        lv_label_set_text(power_alt_status_val_, "STANDBY • Alternator Inactive (Engine Stopped)");
         lv_obj_set_style_text_color(power_alt_status_val_, theme::muted(), 0);
     }
 
@@ -1152,13 +1152,11 @@ void ElixirUI::update(const BoatState& state, const HistoryBuffer& history,
     // -------------------------------------------------------------------------
     lv_label_set_text_fmt(eng_temp_val_, "%.1f", state.engine_temp_c);
     lv_obj_set_style_text_color(eng_temp_val_, engineColor(state.engine_temp_c), 0);
-    lv_bar_set_value(eng_temp_bar_, static_cast<int>(std::lround(state.engine_temp_c)), LV_ANIM_OFF);
-    lv_obj_set_style_bg_color(eng_temp_bar_, engineColor(state.engine_temp_c), LV_PART_INDICATOR);
+    lv_bar_set_value(eng_temp_bar_, static_cast<int32_t>(state.engine_temp_c), LV_ANIM_OFF);
 
     lv_label_set_text_fmt(eng_alt_val_, "%.1f", state.alternator_temp_c);
     lv_obj_set_style_text_color(eng_alt_val_, altColor(state.alternator_temp_c), 0);
-    lv_bar_set_value(eng_alt_bar_, static_cast<int>(std::lround(state.alternator_temp_c)), LV_ANIM_OFF);
-    lv_obj_set_style_bg_color(eng_alt_bar_, altColor(state.alternator_temp_c), LV_PART_INDICATOR);
+    lv_bar_set_value(eng_alt_bar_, static_cast<int32_t>(state.alternator_temp_c), LV_ANIM_OFF);
 
     lv_label_set_text_fmt(eng_room_val_, "%.1f", state.engine_room_temp_c);
     if (state.engine_running) {
@@ -1190,13 +1188,16 @@ void ElixirUI::update(const BoatState& state, const HistoryBuffer& history,
     if (state.anchor_active) {
         lv_label_set_text(anchor_status_val_, state.anchor_alarm ? "ALARM: DRAGGING!" : "GUARD ACTIVE • IN RADIUS");
         lv_obj_set_style_text_color(anchor_status_val_, state.anchor_alarm ? theme::coral() : theme::mint(), 0);
+        lv_label_set_text_fmt(anchor_radius_val_, "%.1f m", state.anchor_radius_m);
+        lv_label_set_text_fmt(anchor_max_val_, "%.1f m", state.anchor_max_radius_m);
+        lv_label_set_text_fmt(anchor_bearing_val_, "%03.0f°", state.anchor_drift_bearing_deg);
     } else {
         lv_label_set_text(anchor_status_val_, "STANDBY (UNDER WAY)");
         lv_obj_set_style_text_color(anchor_status_val_, theme::iceBlue(), 0);
-    }
-    lv_label_set_text_fmt(anchor_radius_val_, "%.1f m", state.anchor_radius_m);
-    lv_label_set_text_fmt(anchor_max_val_, "%.1f m", state.anchor_max_radius_m);
-    lv_label_set_text_fmt(anchor_bearing_val_, "%03.0f° SW", state.anchor_drift_bearing_deg);
+        lv_label_set_text(anchor_radius_val_, "--.- m");
+        lv_label_set_text(anchor_max_val_, "--.- m");
+        lv_label_set_text(anchor_bearing_val_, "---°");
+    };
 
     // -------------------------------------------------------------------------
     // Page 5: System Updates

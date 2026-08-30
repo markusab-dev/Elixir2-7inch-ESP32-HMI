@@ -65,11 +65,11 @@ struct BoatState {
     bool engine_running{false};
     float generator_current_a{0.0F};      // Residual estimate: battery.current - solar.current
 
-    // Comfort & Climate (Prepared for upcoming sensor deployments)
-    float cabin_temp_c{20.5F};
-    float fridge_temp_c{4.2F};
-    bool cabin_temp_valid{true};
-    bool fridge_temp_valid{true};
+    // Comfort & Climate (Not yet installed - false until physical sensors exist)
+    float cabin_temp_c{0.0F};
+    float fridge_temp_c{0.0F};
+    bool cabin_temp_valid{false};
+    bool fridge_temp_valid{false};
 
     // Tactical & AIS (plotter can0.43)
     char ais_target_name[24]{"FINNFELLOW"};
