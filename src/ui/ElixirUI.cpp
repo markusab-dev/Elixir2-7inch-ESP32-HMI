@@ -483,7 +483,7 @@ void ElixirUI::buildSailPage() {
     createCaption(twa_box, "TRUE WIND (MCU COMPUTED)", 6, 6);
     sail_twa_val_ = createValue(twa_box, 6, 24, &lv_font_montserrat_22, theme::champagne());
     createCaption(twa_box, "TRUE SPEED & DIRECTION", 6, 74);
-    sail_tws_val_ = createValue(twa_box, 6, 92, &lv_font_montserrat_22, theme::text());
+    sail_tws_val_ = createValue(twa_box, 6, 92, &lv_font_montserrat_16, theme::text());
     sail_vmg_val_ = lv_label_create(twa_box);
     lv_label_set_text(sail_vmg_val_, "VMG: +5.82 kn");
     lv_obj_set_pos(sail_vmg_val_, 6, 122);
@@ -696,7 +696,7 @@ void ElixirUI::buildEnginePage() {
     eng_room_val_ = createValue(room_box, 6, 24, &lv_font_montserrat_22, theme::text());
     createUnit(room_box, "°C", 90, 30);
     eng_state_badge_ = lv_label_create(room_box);
-    lv_label_set_text(eng_state_badge_, "STATE: ENGINE RUNNING • GENERATOR ACTIVE");
+    lv_label_set_text(eng_state_badge_, "STATE: YANMAR RUNNING • GENERATOR ACTIVE");
     lv_obj_set_pos(eng_state_badge_, 6, 60);
     lv_obj_set_style_text_font(eng_state_badge_, &lv_font_montserrat_12, 0);
     lv_obj_set_style_text_color(eng_state_badge_, theme::mint(), 0);
@@ -721,10 +721,12 @@ void ElixirUI::buildEnginePage() {
     lv_obj_set_pos(nav_box, 0, 126);
     lv_obj_set_size(nav_box, 360, 80);
     theme::styleInset(nav_box, 14);
-    createCaption(nav_box, "MOTORING NAVIGATION SAFETY", 6, 6);
-    eng_sog_val_ = createValue(nav_box, 6, 24, &lv_font_montserrat_22, theme::text());
-    eng_depth_val_ = createValue(nav_box, 130, 24, &lv_font_montserrat_22, theme::iceBlue());
-    eng_heading_val_ = createValue(nav_box, 250, 24, &lv_font_montserrat_22, theme::champagne());
+    createCaption(nav_box, "SOG", 10, 8);
+    eng_sog_val_ = createValue(nav_box, 10, 28, &lv_font_montserrat_22, theme::text());
+    createCaption(nav_box, "KEEL DEPTH", 130, 8);
+    eng_depth_val_ = createValue(nav_box, 130, 28, &lv_font_montserrat_22, theme::iceBlue());
+    createCaption(nav_box, "HEADING", 250, 8);
+    eng_heading_val_ = createValue(nav_box, 250, 28, &lv_font_montserrat_22, theme::champagne());
 
     eng_chart_ = lv_chart_create(card_right);
     lv_obj_set_pos(eng_chart_, 0, 212);
@@ -1060,22 +1062,69 @@ void ElixirUI::update(const BoatState& state, const HistoryBuffer& history,
     // -------------------------------------------------------------------------
     // Page 0: Overview Updates
     // -------------------------------------------------------------------------
-    lv_label_set_text_fmt(ov_sog_, "%.2f", state.sog_kn);
-    lv_label_set_text_fmt(ov_stw_, "STW %.2f kn (x1.055)", state.stw_kn);
-    lv_label_set_text_fmt(ov_depth_, "%.1f", state.depth_keel_m);
-    lv_obj_set_style_text_color(ov_depth_, depthColor(state.depth_keel_m), 0);
-    lv_label_set_text_fmt(ov_heading_, "HDG %03.0f° • COG %03.0f°", state.heading_deg, state.cog_deg);
-    lv_label_set_text_fmt(ov_wind_badge_, "AWA %.0f° %s • %.1f kn\nTWA %.0f° • TWS %.1f kn\nVMG %+.2f kn",
-                          std::fabs(state.awa_deg), state.awa_deg < 0.0F ? "P" : "S", state.aws_kn,
-                          std::fabs(state.twa_deg), state.tws_kn, state.vmg_kn);
+    if (state.gps_valid && state.sog_kn > 0.05F) {
+        lv_label_set_text_fmt(ov_sog_, "%.2f", state.sog_kn);
+    } else {
+        lv_label_set_text(ov_sog_, "--.-");
+    }
 
-    lv_arc_set_value(ov_soc_arc_, static_cast<int>(std::lround(state.battery_soc_pct)));
-    lv_label_set_text_fmt(ov_soc_val_, "%.0f%%", state.battery_soc_pct);
-    lv_label_set_text_fmt(ov_soc_sub_, "%.2f V\n%+.1f A\n%.1f h",
-                          state.battery_voltage_v, state.battery_current_a,
-                          state.estimated_hours_remaining);
+    if (state.stw_raw_kn > 0.05F) {
+        lv_label_set_text_fmt(ov_stw_, "STW %.2f kn (x1.055)", state.stw_kn);
+    } else {
+        lv_label_set_text(ov_stw_, "STW --.- kn");
+    }
 
-    lv_label_set_text_fmt(ov_solar_val_, "%.0f", state.solar_power_w);
+    if (state.depth_raw_m > 0.1F) {
+        lv_label_set_text_fmt(ov_depth_, "%.1f", state.depth_keel_m);
+        lv_obj_set_style_text_color(ov_depth_, depthColor(state.depth_keel_m), 0);
+    } else {
+        lv_label_set_text(ov_depth_, "--.-");
+        lv_obj_set_style_text_color(ov_depth_, theme::muted(), 0);
+    }
+
+    if (std::isfinite(state.heading_deg) && state.gps_valid) {
+        lv_label_set_text_fmt(ov_heading_, "HDG %03.0f° • COG %03.0f°", state.heading_deg, state.cog_deg);
+    } else if (std::isfinite(state.heading_deg)) {
+        lv_label_set_text_fmt(ov_heading_, "HDG %03.0f° • COG ---°", state.heading_deg);
+    } else {
+        lv_label_set_text(ov_heading_, "HDG ---° • COG ---°");
+    }
+
+    if (state.aws_kn > 0.1F) {
+        lv_label_set_text_fmt(ov_wind_badge_, "AWA %.0f° %s • %.1f kn\nTWA %.0f° • TWS %.1f kn\nVMG %+.2f kn",
+                              std::fabs(state.awa_deg), state.awa_deg < 0.0F ? "P" : "S", state.aws_kn,
+                              std::fabs(state.twa_deg), state.tws_kn, state.vmg_kn);
+    } else {
+        lv_label_set_text(ov_wind_badge_, "AWA ---° • --.- kn\nTWA ---° • TWS --.- kn\nVMG --.- kn");
+    }
+
+    if (state.battery_soc_pct > 1.0F) {
+        lv_arc_set_value(ov_soc_arc_, static_cast<int>(std::lround(state.battery_soc_pct)));
+        lv_label_set_text_fmt(ov_soc_val_, "%.0f%%", state.battery_soc_pct);
+    } else {
+        lv_arc_set_value(ov_soc_arc_, 0);
+        lv_label_set_text(ov_soc_val_, "--%");
+    }
+
+    if (state.battery_voltage_v > 5.0F) {
+        if (state.battery_current_a >= 0.0F) {
+            lv_label_set_text_fmt(ov_soc_sub_, "%.2f V\n%+.1f A\nCharging",
+                                  state.battery_voltage_v, state.battery_current_a);
+        } else {
+            lv_label_set_text_fmt(ov_soc_sub_, "%.2f V\n%+.1f A\n%.1f h",
+                                  state.battery_voltage_v, state.battery_current_a,
+                                  state.estimated_hours_remaining);
+        }
+    } else {
+        lv_label_set_text(ov_soc_sub_, "--.- V\n--.- A\n--.- h");
+    }
+
+    if (state.solar_power_w > 0.5F) {
+        lv_label_set_text_fmt(ov_solar_val_, "%.0f", state.solar_power_w);
+    } else {
+        lv_label_set_text(ov_solar_val_, "0");
+    }
+
     if (state.engine_running && state.generator_current_a > 0.5F) {
         lv_label_set_text_fmt(ov_alt_charge_val_, "~ %.1f A", state.generator_current_a);
         lv_obj_set_style_text_color(ov_alt_charge_val_, theme::mint(), 0);
@@ -1084,51 +1133,142 @@ void ElixirUI::update(const BoatState& state, const HistoryBuffer& history,
         lv_obj_set_style_text_color(ov_alt_charge_val_, theme::muted(), 0);
     }
 
-    lv_label_set_text_fmt(ov_engine_val_, "%.1f", state.engine_temp_c);
-    lv_obj_set_style_text_color(ov_engine_val_, engineColor(state.engine_temp_c), 0);
+    if (state.engine_temp_c > 15.0F) {
+        lv_label_set_text_fmt(ov_engine_val_, "%.1f", state.engine_temp_c);
+        lv_obj_set_style_text_color(ov_engine_val_, engineColor(state.engine_temp_c), 0);
+    } else {
+        lv_label_set_text(ov_engine_val_, "--.-");
+        lv_obj_set_style_text_color(ov_engine_val_, theme::muted(), 0);
+    }
 
-    lv_label_set_text_fmt(ov_alt_val_, "%.1f", state.alternator_temp_c);
-    lv_obj_set_style_text_color(ov_alt_val_, altColor(state.alternator_temp_c), 0);
+    if (state.alternator_temp_c > 15.0F) {
+        lv_label_set_text_fmt(ov_alt_val_, "%.1f", state.alternator_temp_c);
+        lv_obj_set_style_text_color(ov_alt_val_, altColor(state.alternator_temp_c), 0);
+    } else {
+        lv_label_set_text(ov_alt_val_, "--.-");
+        lv_obj_set_style_text_color(ov_alt_val_, theme::muted(), 0);
+    }
 
-    lv_label_set_text_fmt(ov_climate_val_, "Cabin %.1f°C • Fridge %.1f°C\nWater %.1f°C • Trip %.1f NM",
-                          state.cabin_temp_c, state.fridge_temp_c,
-                          state.water_temp_c, state.trip_log_nm);
+    // Real environmental sensors on Elixir 2: Water (DST) and EngRoom (DS18B20)
+    char water_str[16];
+    char eng_room_str[16];
+    if (state.water_temp_c > 0.5F) {
+        snprintf(water_str, sizeof(water_str), "%.1f°C", state.water_temp_c);
+    } else {
+        snprintf(water_str, sizeof(water_str), "--.-°C");
+    }
+    if (state.engine_room_temp_c > 10.0F) {
+        snprintf(eng_room_str, sizeof(eng_room_str), "%.1f°C", state.engine_room_temp_c);
+    } else {
+        snprintf(eng_room_str, sizeof(eng_room_str), "--.-°C");
+    }
+    lv_label_set_text_fmt(ov_climate_val_, "Water %s • EngRoom %s\nTrip %.1f NM • Total %.0f NM",
+                          water_str, eng_room_str,
+                          state.trip_log_nm, state.total_log_nm);
 
     // -------------------------------------------------------------------------
     // Page 1: Sail Updates
     // -------------------------------------------------------------------------
-    lv_label_set_text_fmt(sail_sog_, "%.2f", state.sog_kn);
-    lv_label_set_text_fmt(sail_stw_, "STW %.2f kn (x1.055 calibrated)", state.stw_kn);
-    lv_label_set_text_fmt(sail_depth_, "%.1f", state.depth_keel_m);
-    lv_obj_set_style_text_color(sail_depth_, depthColor(state.depth_keel_m), 0);
-    lv_label_set_text_fmt(sail_heading_, "%03.0f°", state.heading_deg);
-    lv_label_set_text_fmt(sail_cog_, "COG %03.0f° (GPS)\nVar %.1f° E", state.cog_deg, state.magnetic_variation_deg);
+    if (state.gps_valid && state.sog_kn > 0.05F) {
+        lv_label_set_text_fmt(sail_sog_, "%.2f", state.sog_kn);
+    } else {
+        lv_label_set_text(sail_sog_, "--.-");
+    }
 
-    lv_label_set_text_fmt(sail_awa_val_, "%.0f° %s", std::fabs(state.awa_deg), state.awa_deg < 0.0F ? "PORT" : "STBD");
-    lv_label_set_text_fmt(sail_aws_val_, "%.1f", state.aws_kn);
-    lv_label_set_text_fmt(sail_twa_val_, "TWA %.0f° %s", std::fabs(state.twa_deg), state.twa_deg < 0.0F ? "P" : "S");
-    lv_label_set_text_fmt(sail_tws_val_, "TWS %.1f kn • TWD %03.0f°", state.tws_kn, state.twd_deg);
-    lv_label_set_text_fmt(sail_vmg_val_, "VMG: %+.2f kn", state.vmg_kn);
+    if (state.stw_raw_kn > 0.05F) {
+        lv_label_set_text_fmt(sail_stw_, "STW %.2f kn (x1.055 calibrated)", state.stw_kn);
+    } else {
+        lv_label_set_text(sail_stw_, "STW --.- kn");
+    }
+
+    if (state.depth_raw_m > 0.1F) {
+        lv_label_set_text_fmt(sail_depth_, "%.1f", state.depth_keel_m);
+        lv_obj_set_style_text_color(sail_depth_, depthColor(state.depth_keel_m), 0);
+    } else {
+        lv_label_set_text(sail_depth_, "--.-");
+        lv_obj_set_style_text_color(sail_depth_, theme::muted(), 0);
+    }
+
+    if (std::isfinite(state.heading_deg)) {
+        lv_label_set_text_fmt(sail_heading_, "%03.0f°", state.heading_deg);
+    } else {
+        lv_label_set_text(sail_heading_, "---°");
+    }
+
+    if (state.gps_valid && std::isfinite(state.cog_deg)) {
+        lv_label_set_text_fmt(sail_cog_, "COG %03.0f° (GPS)\nVar %.1f° E", state.cog_deg, state.magnetic_variation_deg);
+    } else {
+        lv_label_set_text(sail_cog_, "COG ---° (GPS)\nVar 6.2° E");
+    }
+
+    if (state.aws_kn > 0.1F) {
+        lv_label_set_text_fmt(sail_awa_val_, "%.0f° %s", std::fabs(state.awa_deg), state.awa_deg < 0.0F ? "PORT" : "STBD");
+        lv_label_set_text_fmt(sail_aws_val_, "%.1f", state.aws_kn);
+    } else {
+        lv_label_set_text(sail_awa_val_, "---°");
+        lv_label_set_text(sail_aws_val_, "--.-");
+    }
+
+    if (state.tws_kn > 0.1F) {
+        lv_label_set_text_fmt(sail_twa_val_, "TWA %.0f° %s", std::fabs(state.twa_deg), state.twa_deg < 0.0F ? "P" : "S");
+        lv_label_set_text_fmt(sail_tws_val_, "TWS %.1f kn • TWD %03.0f°", state.tws_kn, state.twd_deg);
+        lv_label_set_text_fmt(sail_vmg_val_, "VMG: %+.2f kn", state.vmg_kn);
+    } else {
+        lv_label_set_text(sail_twa_val_, "TWA ---°");
+        lv_label_set_text(sail_tws_val_, "TWS --.- kn • TWD ---°");
+        lv_label_set_text(sail_vmg_val_, "VMG: --.- kn");
+    }
 
     lv_label_set_text_fmt(sail_roll_val_, "%+.1f°", state.roll_deg);
     lv_label_set_text_fmt(sail_pitch_val_, "%+.1f°", state.pitch_deg);
-    lv_label_set_text_fmt(sail_water_val_, "%.1f", state.water_temp_c);
+
+    if (state.water_temp_c > 0.5F) {
+        lv_label_set_text_fmt(sail_water_val_, "%.1f", state.water_temp_c);
+    } else {
+        lv_label_set_text(sail_water_val_, "--.-");
+    }
 
     // -------------------------------------------------------------------------
     // Page 2: Power Updates
     // -------------------------------------------------------------------------
-    lv_arc_set_value(power_soc_arc_, static_cast<int16_t>(std::lround(state.battery_soc_pct)));
-    lv_label_set_text_fmt(power_soc_val_, "%.0f%%", state.battery_soc_pct);
-    lv_label_set_text_fmt(power_voltage_val_, "%.2f V", state.battery_voltage_v);
-    lv_label_set_text_fmt(power_current_val_, "%+.1f A", state.battery_current_a);
-    lv_label_set_text_fmt(power_power_val_, "%+.0f W", state.battery_power_w);
-    lv_label_set_text_fmt(power_remaining_val_, "%.1f Hours", state.estimated_hours_remaining);
+    if (state.battery_soc_pct > 1.0F) {
+        lv_arc_set_value(power_soc_arc_, static_cast<int16_t>(std::lround(state.battery_soc_pct)));
+        lv_label_set_text_fmt(power_soc_val_, "%.0f%%", state.battery_soc_pct);
+    } else {
+        lv_arc_set_value(power_soc_arc_, 0);
+        lv_label_set_text(power_soc_val_, "--%");
+    }
 
-    lv_label_set_text_fmt(power_solar_val_, "%.0f", state.solar_power_w);
+    if (state.battery_voltage_v > 5.0F) {
+        lv_label_set_text_fmt(power_voltage_val_, "%.2f V", state.battery_voltage_v);
+        lv_label_set_text_fmt(power_current_val_, "%+.1f A", state.battery_current_a);
+        lv_label_set_text_fmt(power_power_val_, "%+.0f W", state.battery_power_w);
+        if (state.battery_current_a >= 0.0F) {
+            lv_label_set_text_fmt(power_remaining_val_, "CHARGING (+%.1f A)", state.battery_current_a);
+        } else {
+            lv_label_set_text_fmt(power_remaining_val_, "%.1f Hours", state.estimated_hours_remaining);
+        }
+    } else {
+        lv_label_set_text(power_voltage_val_, "--.- V");
+        lv_label_set_text(power_current_val_, "--.- A");
+        lv_label_set_text(power_power_val_, "--.- W");
+        lv_label_set_text(power_remaining_val_, "--.- Hours");
+    }
+
+    if (state.solar_power_w > 0.5F) {
+        lv_label_set_text_fmt(power_solar_val_, "%.0f", state.solar_power_w);
+    } else {
+        lv_label_set_text(power_solar_val_, "0");
+    }
     lv_label_set_text_fmt(power_solar_today_val_, "%.0f Wh produced today", state.solar_today_wh);
 
-    lv_label_set_text_fmt(power_alt_temp_val_, "%.1f", state.alternator_temp_c);
-    lv_obj_set_style_text_color(power_alt_temp_val_, altColor(state.alternator_temp_c), 0);
+    if (state.alternator_temp_c > 15.0F) {
+        lv_label_set_text_fmt(power_alt_temp_val_, "%.1f", state.alternator_temp_c);
+        lv_obj_set_style_text_color(power_alt_temp_val_, altColor(state.alternator_temp_c), 0);
+    } else {
+        lv_label_set_text(power_alt_temp_val_, "--.-");
+        lv_obj_set_style_text_color(power_alt_temp_val_, theme::muted(), 0);
+    }
 
     if (state.engine_running && state.generator_current_a > 0.5F) {
         if (state.alternator_temp_c >= 100.0F) {
@@ -1150,40 +1290,81 @@ void ElixirUI::update(const BoatState& state, const HistoryBuffer& history,
     // -------------------------------------------------------------------------
     // Page 3: Engine Updates
     // -------------------------------------------------------------------------
-    lv_label_set_text_fmt(eng_temp_val_, "%.1f", state.engine_temp_c);
-    lv_obj_set_style_text_color(eng_temp_val_, engineColor(state.engine_temp_c), 0);
-    lv_bar_set_value(eng_temp_bar_, static_cast<int32_t>(state.engine_temp_c), LV_ANIM_OFF);
+    if (state.engine_temp_c > 15.0F) {
+        lv_label_set_text_fmt(eng_temp_val_, "%.1f", state.engine_temp_c);
+        lv_obj_set_style_text_color(eng_temp_val_, engineColor(state.engine_temp_c), 0);
+        lv_bar_set_value(eng_temp_bar_, static_cast<int32_t>(state.engine_temp_c), LV_ANIM_OFF);
+    } else {
+        lv_label_set_text(eng_temp_val_, "--.-");
+        lv_obj_set_style_text_color(eng_temp_val_, theme::muted(), 0);
+        lv_bar_set_value(eng_temp_bar_, 0, LV_ANIM_OFF);
+    }
 
-    lv_label_set_text_fmt(eng_alt_val_, "%.1f", state.alternator_temp_c);
-    lv_obj_set_style_text_color(eng_alt_val_, altColor(state.alternator_temp_c), 0);
-    lv_bar_set_value(eng_alt_bar_, static_cast<int32_t>(state.alternator_temp_c), LV_ANIM_OFF);
+    if (state.alternator_temp_c > 15.0F) {
+        lv_label_set_text_fmt(eng_alt_val_, "%.1f", state.alternator_temp_c);
+        lv_obj_set_style_text_color(eng_alt_val_, altColor(state.alternator_temp_c), 0);
+        lv_bar_set_value(eng_alt_bar_, static_cast<int32_t>(state.alternator_temp_c), LV_ANIM_OFF);
+    } else {
+        lv_label_set_text(eng_alt_val_, "--.-");
+        lv_obj_set_style_text_color(eng_alt_val_, theme::muted(), 0);
+        lv_bar_set_value(eng_alt_bar_, 0, LV_ANIM_OFF);
+    }
 
-    lv_label_set_text_fmt(eng_room_val_, "%.1f", state.engine_room_temp_c);
-    if (state.engine_running) {
+    if (state.engine_room_temp_c > 10.0F) {
+        lv_label_set_text_fmt(eng_room_val_, "%.1f", state.engine_room_temp_c);
+    } else {
+        lv_label_set_text(eng_room_val_, "--.-");
+    }
+
+    if (state.engine_running && state.generator_current_a > 0.5F) {
         lv_label_set_text_fmt(eng_charge_val_, "~ %.1f A (%.0f W)", state.generator_current_a,
                               state.generator_current_a * state.battery_voltage_v);
         lv_label_set_text(eng_state_badge_, "STATE: YANMAR RUNNING • GENERATOR ACTIVE");
         lv_obj_set_style_text_color(eng_state_badge_, theme::mint(), 0);
     } else {
-        lv_label_set_text(eng_charge_val_, "0.0 A (Off)");
+        lv_label_set_text(eng_charge_val_, "0.0 A (Standby)");
         lv_label_set_text(eng_state_badge_, "STATE: ENGINE STOPPED • STANDBY");
         lv_obj_set_style_text_color(eng_state_badge_, theme::muted(), 0);
     }
 
-    lv_label_set_text_fmt(eng_sog_val_, "SOG: %.2f kn", state.sog_kn);
-    lv_label_set_text_fmt(eng_depth_val_, "DEPTH: %.1f m", state.depth_keel_m);
-    lv_obj_set_style_text_color(eng_depth_val_, depthColor(state.depth_keel_m), 0);
-    lv_label_set_text_fmt(eng_heading_val_, "HDG: %03.0f°", state.heading_deg);
+    if (state.gps_valid && state.sog_kn > 0.05F) {
+        lv_label_set_text_fmt(eng_sog_val_, "%.2f kn", state.sog_kn);
+    } else {
+        lv_label_set_text(eng_sog_val_, "--.- kn");
+    }
+
+    if (state.depth_raw_m > 0.1F) {
+        lv_label_set_text_fmt(eng_depth_val_, "%.1f m", state.depth_keel_m);
+        lv_obj_set_style_text_color(eng_depth_val_, depthColor(state.depth_keel_m), 0);
+    } else {
+        lv_label_set_text(eng_depth_val_, "--.- m");
+        lv_obj_set_style_text_color(eng_depth_val_, theme::muted(), 0);
+    }
+
+    if (std::isfinite(state.heading_deg)) {
+        lv_label_set_text_fmt(eng_heading_val_, "%03.0f°", state.heading_deg);
+    } else {
+        lv_label_set_text(eng_heading_val_, "---°");
+    }
 
     // -------------------------------------------------------------------------
     // Page 4: Tactical Updates
     // -------------------------------------------------------------------------
-    lv_label_set_text(ais_name_val_, state.ais_target_name);
-    lv_label_set_text_fmt(ais_range_val_, "%.2f NM @ %03.0f°", state.ais_range_nm, state.ais_bearing_deg);
-    lv_label_set_text_fmt(ais_sog_val_, "%.1f kn", state.ais_sog_kn);
-    lv_label_set_text_fmt(ais_cpa_val_, "%.2f NM", state.ais_cpa_nm);
-    lv_label_set_text_fmt(ais_tcpa_val_, "%.1f min", state.ais_tcpa_min);
-    lv_label_set_text_fmt(ais_count_val_, "%u Vessels", state.ais_targets_count);
+    if (state.ais_targets_count > 0 && state.ais_target_name[0] != '\0') {
+        lv_label_set_text(ais_name_val_, state.ais_target_name);
+        lv_label_set_text_fmt(ais_range_val_, "%.2f NM @ %03.0f°", state.ais_range_nm, state.ais_bearing_deg);
+        lv_label_set_text_fmt(ais_sog_val_, "%.1f kn", state.ais_sog_kn);
+        lv_label_set_text_fmt(ais_cpa_val_, "%.2f NM", state.ais_cpa_nm);
+        lv_label_set_text_fmt(ais_tcpa_val_, "%.1f min", state.ais_tcpa_min);
+        lv_label_set_text_fmt(ais_count_val_, "%u Vessels", state.ais_targets_count);
+    } else {
+        lv_label_set_text(ais_name_val_, "-- (NO TARGET)");
+        lv_label_set_text(ais_range_val_, "--.- NM");
+        lv_label_set_text(ais_sog_val_, "--.- kn");
+        lv_label_set_text(ais_cpa_val_, "--.- NM");
+        lv_label_set_text(ais_tcpa_val_, "--.- min");
+        lv_label_set_text(ais_count_val_, "0 Vessels");
+    }
 
     if (state.anchor_active) {
         lv_label_set_text(anchor_status_val_, state.anchor_alarm ? "ALARM: DRAGGING!" : "GUARD ACTIVE • IN RADIUS");
