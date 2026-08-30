@@ -20,7 +20,7 @@ inline constexpr bool kLoopReplay = true;
 inline constexpr float kReplaySpeeds[] = {0.5F, 1.0F, 2.0F, 5.0F, 10.0F, 30.0F};
 inline constexpr std::size_t kReplaySpeedCount =
     sizeof(kReplaySpeeds) / sizeof(kReplaySpeeds[0]);
-inline constexpr std::size_t kInitialReplaySpeedIndex = 3;
+inline constexpr std::size_t kInitialReplaySpeedIndex = 1;
 
 inline constexpr uint16_t kHistoryPoints = 120;
 inline constexpr uint16_t kLvglBufferLines = 48;
